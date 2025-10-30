@@ -17,7 +17,7 @@ def polling_buttons():
         me.button_toggle(
             value=[str(state.polling_interval)],
             buttons=[
-                me.ButtonToggleButton(label='1s', value='1'),
+                me.ButtonToggleButton(label='3s', value='3'),
                 me.ButtonToggleButton(label='5s', value='5'),
                 me.ButtonToggleButton(label='30s', value='30'),
                 me.ButtonToggleButton(label='Disable', value='0'),
