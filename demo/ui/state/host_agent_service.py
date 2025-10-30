@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 import sys
@@ -136,31 +137,51 @@ async def ListMessages(conversation_id: str) -> list[Message]:
 async def UpdateAppState(state: AppState, conversation_id: str):
     """Update the app state."""
     try:
+        tasks_to_run = [
+            ListConversations(),
+            GetTasks(),
+            GetProcessingMessages(),
+        ]
         if conversation_id:
             state.current_conversation_id = conversation_id
-            messages = await ListMessages(conversation_id)
-            if not messages:
-                state.messages = []
-            else:
-                state.messages = [convert_message_to_state(x) for x in messages]
-        conversations = await ListConversations()
-        if not conversations:
-            state.conversations = []
+            tasks_to_run.append(ListMessages(conversation_id))
         else:
-            state.conversations = [
-                convert_conversation_to_state(x) for x in conversations
+            # Placeholder for messages if no conversation_id
+            tasks_to_run.append(asyncio.sleep(0, result=[]))
+
+        results = await asyncio.gather(*tasks_to_run, return_exceptions=True)
+
+        # Process results
+        conversations_result = (
+            results[0] if not isinstance(results[0], Exception) else []
+        )
+        tasks_result = results[1] if not isinstance(results[1], Exception) else []
+        processing_messages_result = (
+            results[2] if not isinstance(results[2], Exception) else {}
+        )
+        messages_result = (
+            results[3] if not isinstance(results[3], Exception) else []
+        )
+
+        # Update state
+        state.conversations = [
+            convert_conversation_to_state(x) for x in conversations_result
+        ]
+        state.task_list = [
+            SessionTask(
+                context_id=extract_conversation_id(task),
+                task=convert_task_to_state(task),
+            )
+            for task in tasks_result
+        ]
+        state.background_tasks = processing_messages_result
+        state.message_aliases = GetMessageAliases()
+
+        if conversation_id:
+            state.messages = [
+                convert_message_to_state(x) for x in messages_result
             ]
 
-        state.task_list = []
-        for task in await GetTasks():
-            state.task_list.append(
-                SessionTask(
-                    context_id=extract_conversation_id(task),
-                    task=convert_task_to_state(task),
-                )
-            )
-        state.background_tasks = await GetProcessingMessages()
-        state.message_aliases = GetMessageAliases()
     except Exception as e:
         print('Failed to update state: ', e)
         traceback.print_exc(file=sys.stdout)

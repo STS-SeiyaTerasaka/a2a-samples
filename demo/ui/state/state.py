@@ -106,3 +106,4 @@ class SettingsState:
             'text/plain',
         ]
     )
+

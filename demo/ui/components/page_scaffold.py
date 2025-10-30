@@ -34,7 +34,8 @@ def page_scaffold():
         if app_state
         else None
     )
-    async_poller(action=action, trigger_event=refresh_app_state)
+    # Temporarily disable async_poller to prevent UI interference
+    # async_poller(action=action, trigger_event=refresh_app_state)
 
     sidenav('')
 
