@@ -27,15 +27,18 @@ async def refresh_app_state(e: mel.WebEvent):  # pylint: disable=unused-argument
 def page_scaffold():
     """Page scaffold component"""
     app_state = me.state(AppState)
-    action = (
-        AsyncAction(
-            value=app_state, duration_seconds=app_state.polling_interval
+
+    # Only poll when on conversation pages.
+    # The `is_processing_message` flag is used to disable the input, not to stop polling.
+    if app_state.current_page_path in ['/', '/conversation']:
+        action = (
+            AsyncAction(
+                value=app_state, duration_seconds=app_state.polling_interval
+            )
+            if app_state
+            else None
         )
-        if app_state
-        else None
-    )
-    # Temporarily disable async_poller to prevent UI interference
-    # async_poller(action=action, trigger_event=refresh_app_state)
+        async_poller(action=action, trigger_event=refresh_app_state)
 
     sidenav('')
 

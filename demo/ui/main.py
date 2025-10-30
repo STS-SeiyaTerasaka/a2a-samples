@@ -29,8 +29,8 @@ from state.state import AppState
 load_dotenv()
 
 
-def on_load(e: me.LoadEvent):  # pylint: disable=unused-argument
-    """On load event"""
+def _on_load_common(e: me.LoadEvent):  # pylint: disable=unused-argument
+    """Common on load event logic"""
     state = me.state(AppState)
     me.set_theme_mode(state.theme_mode)
     if 'conversation_id' in me.query_params:
@@ -62,10 +62,15 @@ security_policy = me.SecurityPolicy(
 )
 
 
+def on_load_home(e: me.LoadEvent):
+    _on_load_common(e)
+    me.state(AppState).current_page_path = '/'
+
+
 @me.page(
     path='/',
     title='Chat',
-    on_load=on_load,
+    on_load=on_load_home,
     security_policy=security_policy,
 )
 def home_page():
@@ -77,10 +82,15 @@ def home_page():
         home_page_content(state)
 
 
+def on_load_agents(e: me.LoadEvent):
+    _on_load_common(e)
+    me.state(AppState).current_page_path = '/agents'
+
+
 @me.page(
     path='/agents',
     title='Agents',
-    on_load=on_load,
+    on_load=on_load_agents,
     security_policy=security_policy,
 )
 def another_page():
@@ -89,10 +99,15 @@ def another_page():
     agent_list_page(me.state(AppState))
 
 
+def on_load_conversation(e: me.LoadEvent):
+    _on_load_common(e)
+    me.state(AppState).current_page_path = '/conversation'
+
+
 @me.page(
     path='/conversation',
     title='Conversation',
-    on_load=on_load,
+    on_load=on_load_conversation,
     security_policy=security_policy,
 )
 def chat_page():
@@ -101,10 +116,15 @@ def chat_page():
     conversation_page(me.state(AppState))
 
 
+def on_load_event_list(e: me.LoadEvent):
+    _on_load_common(e)
+    me.state(AppState).current_page_path = '/event_list'
+
+
 @me.page(
     path='/event_list',
     title='Event List',
-    on_load=on_load,
+    on_load=on_load_event_list,
     security_policy=security_policy,
 )
 def event_page():
@@ -113,10 +133,15 @@ def event_page():
     event_list_page(me.state(AppState))
 
 
+def on_load_settings(e: me.LoadEvent):
+    _on_load_common(e)
+    me.state(AppState).current_page_path = '/settings'
+
+
 @me.page(
     path='/settings',
     title='Settings',
-    on_load=on_load,
+    on_load=on_load_settings,
     security_policy=security_policy,
 )
 def settings_page():
@@ -125,10 +150,15 @@ def settings_page():
     settings_page_content()
 
 
+def on_load_task_list(e: me.LoadEvent):
+    _on_load_common(e)
+    me.state(AppState).current_page_path = '/task_list'
+
+
 @me.page(
     path='/task_list',
     title='Task List',
-    on_load=on_load,
+    on_load=on_load_task_list,
     security_policy=security_policy,
 )
 def task_page():

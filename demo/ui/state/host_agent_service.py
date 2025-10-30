@@ -137,6 +137,9 @@ async def ListMessages(conversation_id: str) -> list[Message]:
 async def UpdateAppState(state: AppState, conversation_id: str):
     """Update the app state."""
     try:
+        # Store the current number of messages to detect a new response
+        initial_message_count = len(state.messages)
+
         tasks_to_run = [
             ListConversations(),
             GetTasks(),
@@ -181,6 +184,13 @@ async def UpdateAppState(state: AppState, conversation_id: str):
             state.messages = [
                 convert_message_to_state(x) for x in messages_result
             ]
+
+        # If we were processing a message and a new message has arrived,
+        # assume it's the agent's response and turn off the processing flag.
+        if state.is_processing_message and len(state.messages) > initial_message_count:
+            # A more robust check could verify the last message's role is 'agent'
+            if state.messages and state.messages[-1].role == Role.agent.name:
+                state.is_processing_message = False
 
     except Exception as e:
         print('Failed to update state: ', e)

@@ -77,6 +77,7 @@ class AppState:
     theme_mode: Literal['system', 'light', 'dark'] = 'system'
 
     current_conversation_id: str = ''
+    current_page_path: str = '/'
     conversations: list[StateConversation]
     messages: list[StateMessage]
     task_list: list[SessionTask] = dataclasses.field(default_factory=list)
@@ -88,7 +89,8 @@ class AppState:
     )
     # This is used to track the message sent to agent with form data
     form_responses: dict[str, str] = dataclasses.field(default_factory=dict)
-    polling_interval: int = 1
+    polling_interval: int = 5
+    is_processing_message: bool = False
 
     # Added for API key management
     api_key: str = ''
@@ -106,4 +108,3 @@ class SettingsState:
             'text/plain',
         ]
     )
-

@@ -15,7 +15,7 @@ def polling_buttons():
         )
     ):
         me.button_toggle(
-            value=['0'], # Changed default to '0' for Disable
+            value=[str(state.polling_interval)],
             buttons=[
                 me.ButtonToggleButton(label='1s', value='1'),
                 me.ButtonToggleButton(label='5s', value='5'),
@@ -38,9 +38,18 @@ def polling_buttons():
     me.slot()
 
 
-def on_change(e: me.ButtonToggleChangeEvent):
+async def on_change(e: me.ButtonToggleChangeEvent):
+    """Button toggle handler"""
     state = me.state(AppState)
+    # Temporarily disable polling to prevent race conditions
+    state.is_processing_message = True
+    yield
+
     state.polling_interval = int(e.value)
+
+    # Re-enable polling by setting processing to false
+    state.is_processing_message = False
+    yield
 
 
 async def force_refresh(e: me.ClickEvent):
