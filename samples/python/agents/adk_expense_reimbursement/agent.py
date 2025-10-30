@@ -63,7 +63,11 @@ def return_form(
         dict[str, Any]: A JSON dictionary for the form response.
     """
     if isinstance(form_request, str):
-        form_request = json.loads(form_request)
+        # 空文字列の場合は空の辞書として扱う
+        if not form_request.strip():
+            form_request = {}
+        else:
+            form_request = json.loads(form_request)
 
     tool_context.actions.skip_summarization = True
     tool_context.actions.escalate = True
@@ -134,7 +138,7 @@ class ReimbursementAgent:
 
     def _build_agent(self) -> LlmAgent:
         """Builds the LLM agent for the reimbursement agent."""
-        LITELLM_MODEL = os.getenv('LITELLM_MODEL', 'gemini/gemini-2.0-flash-001')
+        LITELLM_MODEL = os.getenv('LITELLM_MODEL', 'gemini/gemini-2.5-flash')
         return LlmAgent(
             model=LiteLlm(model=LITELLM_MODEL),
             name='reimbursement_agent',

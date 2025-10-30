@@ -15,6 +15,7 @@ from a2a.utils import (
 )
 from a2a.utils.errors import ServerError
 from agent import ImageGenerationAgent
+import os
 
 
 class ImageGenerationAgentExecutor(AgentExecutor):
@@ -42,8 +43,11 @@ class ImageGenerationAgentExecutor(AgentExecutor):
                 error=ValueError(f'Error invoking agent: {e}')
             ) from e
 
+        # Sanitize the result to remove potential file extensions added by the LLM
+        image_key = os.path.splitext(result.raw)[0]
+
         data = self.agent.get_image_data(
-            session_id=context.context_id, image_key=result.raw
+            session_id=context.context_id, image_key=image_key
         )
         if data and not data.error:
             parts = [
@@ -73,7 +77,9 @@ class ImageGenerationAgentExecutor(AgentExecutor):
         )
 
     async def cancel(
-        self, request: RequestContext, event_queue: EventQueue
+        self,
+        request: RequestContext,
+        event_queue: EventQueue,
     ) -> Task | None:
         raise ServerError(error=UnsupportedOperationError())
 

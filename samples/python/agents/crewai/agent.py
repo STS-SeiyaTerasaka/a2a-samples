@@ -99,7 +99,7 @@ def generate_image_tool(
 
     try:
         response = client.models.generate_content(
-            model='gemini-2.0-flash-exp',
+            model='gemini-2.5-flash-image',
             contents=contents,
             config=types.GenerateContentConfig(
                 response_modalities=['Text', 'Image']
@@ -144,10 +144,10 @@ class ImageGenerationAgent:
 
     def __init__(self):
         if os.getenv('GOOGLE_GENAI_USE_VERTEXAI'):
-            self.model = LLM(model='vertex_ai/gemini-2.0-flash')
+            self.model = LLM(model='vertex_ai/gemini-2.5-flash-image')
         elif os.getenv('GOOGLE_API_KEY'):
             self.model = LLM(
-                model='gemini/gemini-2.0-flash',
+                model='gemini/gemini-2.5-flash-image',
                 api_key=os.getenv('GOOGLE_API_KEY'),
             )
 

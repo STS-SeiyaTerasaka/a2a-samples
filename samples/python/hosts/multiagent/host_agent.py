@@ -80,6 +80,11 @@ class HostAgent:
         self.register_agent_card(card)
 
     def register_agent_card(self, card: AgentCard):
+        # If the agent card URL is 0.0.0.0, replace it with localhost
+        # so that the client can connect to it.
+        if '0.0.0.0' in card.url:
+            card.url = card.url.replace('0.0.0.0', 'localhost')
+
         remote_connection = RemoteAgentConnections(self.client_factory, card)
         self.remote_agent_connections[card.name] = remote_connection
         self.cards[card.name] = card
