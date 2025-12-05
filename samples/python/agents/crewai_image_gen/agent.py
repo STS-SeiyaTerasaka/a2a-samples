@@ -10,7 +10,7 @@ import re
 
 from collections.abc import AsyncIterable
 from io import BytesIO
-from typing import Any
+from typing import Any, ClassVar # ClassVarを追加
 from uuid import uuid4
 
 from PIL import Image
@@ -20,11 +20,15 @@ from crewai.tools import tool
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from google.adk.agents import BaseAgent
+from google.adk.events import Event
+from google.adk.agents.invocation_context import InvocationContext
+from typing import AsyncGenerator
 try:
     from in_memory_cache import InMemoryCache
 except ImportError:
     from .in_memory_cache import InMemoryCache
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict # ConfigDictを追加
 
 
 load_dotenv()
@@ -140,12 +144,19 @@ def generate_image_tool(
     return -999999999
 
 
-class ImageGenerationAgent:
+class ImageGenerationAgent(BaseAgent):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     """Agent that generates images based on user prompts."""
 
-    SUPPORTED_CONTENT_TYPES = ['text', 'text/plain', 'image/png']
+    SUPPORTED_CONTENT_TYPES: list[str] = ['text', 'text/plain', 'image/png'] # ClassVarを削除
+    model: Any = None # ClassVarを削除
+    image_creator_agent: Any = None # ClassVarを削除
+    image_creation_task: Any = None # 追加
+    image_crew: Any = None # 追加
 
     def __init__(self):
+        super().__init__(name="image_generation_agent")
         if os.getenv('GOOGLE_GENAI_USE_VERTEXAI'):
             self.model = LLM(model='vertex_ai/gemini-2.5-flash-image')
         elif os.getenv('GOOGLE_API_KEY'):
@@ -200,6 +211,45 @@ class ImageGenerationAgent:
             process=Process.sequential,
             verbose=False,
         )
+
+    async def _run_async_impl(
+        self, ctx: InvocationContext
+    ) -> AsyncGenerator[Event, None]:
+        """ADK entry point: Executes CrewAI logic and yields events."""
+        # Extract user message with fallback for attribute names
+        message_obj = getattr(ctx, "new_message", getattr(ctx, "message", None))
+        
+        if (
+            message_obj
+            and message_obj.parts
+            and message_obj.parts[0].text
+        ):
+            user_message = message_obj.parts[0].text
+        else:
+            user_message = ""
+
+        session_id = ctx.session.id
+
+        # Execute CrewAI (synchronous invoke wrapped in async method)
+        try:
+            # invoke returns a string (the result of the crew execution)
+            result = self.invoke(user_message, session_id)
+            
+            # Yield the result as a text event
+            yield Event(
+                author=self.name,
+                content=types.Content(
+                    parts=[types.Part.from_text(text=str(result))]
+                )
+            )
+        except Exception as e:
+            logger.error(f"Error executing CrewAI: {e}")
+            yield Event(
+                author=self.name,
+                content=types.Content(
+                    parts=[types.Part.from_text(text=f"Error: {str(e)}")]
+                )
+            )
 
     def extract_artifact_file_id(self, query):
         try:
