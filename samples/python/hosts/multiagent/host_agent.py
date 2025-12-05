@@ -5,6 +5,8 @@ import os
 import uuid
 
 import httpx
+from google.auth import default
+from google.auth.transport.requests import Request as GoogleAuthRequest
 
 from a2a.client import A2ACardResolver, ClientConfig, ClientFactory
 from a2a.types import (
@@ -27,6 +29,23 @@ from google.genai import types
 from remote_agent_connection import RemoteAgentConnections, TaskUpdateCallback
 from timestamp_ext import TimestampExtension
 
+# --- Authentication Class (Added for Agent Engine Support) ---
+class GoogleAuthRefresh(httpx.Auth):
+    def __init__(self, scopes=None):
+        if scopes is None:
+            scopes = ['https://www.googleapis.com/auth/cloud-platform']
+        self.credentials, _ = default(scopes=scopes)
+        self.transport_request = GoogleAuthRequest()
+        # Refresh immediately if needed
+        if not self.credentials.valid:
+            self.credentials.refresh(self.transport_request)
+
+    def auth_flow(self, request):
+        if not self.credentials.valid:
+            self.credentials.refresh(self.transport_request)
+        request.headers['Authorization'] = f'Bearer {self.credentials.token}'
+        yield request
+
 
 class HostAgent:
     """The host agent.
@@ -42,7 +61,14 @@ class HostAgent:
         task_callback: TaskUpdateCallback | None = None,
     ):
         self.task_callback = task_callback
+        
+        # --- Authentication Injection ---
+        # Inject Google Cloud authentication into the http_client.
+        # This ensures all subsequent requests (card retrieval, messaging) are authenticated.
         self.httpx_client = http_client
+        self.httpx_client.auth = GoogleAuthRefresh()
+        # --------------------------------
+
         self.timestamp_extension = TimestampExtension()
         config = ClientConfig(
             httpx_client=self.httpx_client,
@@ -65,7 +91,8 @@ class HostAgent:
         )
 
     async def init_remote_agent_addresses(
-        self, remote_agent_addresses: list[str]
+        self,
+        remote_agent_addresses: list[str]
     ):
         async with asyncio.TaskGroup() as task_group:
             for address in remote_agent_addresses:
@@ -75,9 +102,28 @@ class HostAgent:
         # connections are established.
 
     async def retrieve_card(self, address: str):
+        # Handle Agent Engine paths gracefully if needed, though card_resolver usually handles it.
+        # If necessary, path adjustment logic similar to agent_card.py could be added here,
+        # but let's try with just authentication first as A2ACardResolver might be robust enough
+        # or the input address might already be correct.
+        
         card_resolver = A2ACardResolver(self.httpx_client, address)
-        card = await card_resolver.get_agent_card()
-        self.register_agent_card(card)
+        try:
+            card = await card_resolver.get_agent_card()
+            self.register_agent_card(card)
+        except Exception as e:
+            # Fallback logic for Agent Engine path if the default fails
+            if 'reasoningEngines' in address and not address.endswith('/v1/card'):
+                 print(f"Initial card fetch failed for {address}, trying Agent Engine path...")
+                 alt_address = f"{address.rstrip('/')}/v1/card"
+                 card_resolver = A2ACardResolver(self.httpx_client, alt_address)
+                 try:
+                     card = await card_resolver.get_agent_card()
+                     self.register_agent_card(card)
+                 except Exception as inner_e:
+                     print(f"Failed to retrieve card from {alt_address}: {inner_e}")
+            else:
+                print(f"Failed to retrieve card from {address}: {e}")
 
     def register_agent_card(self, card: AgentCard):
         # If the agent card URL is 0.0.0.0, replace it with localhost
@@ -147,7 +193,9 @@ Current agent: {current_agent['active_agent']}
         return {'active_agent': 'None'}
 
     def before_model_callback(
-        self, callback_context: CallbackContext, llm_request
+        self,
+        callback_context: CallbackContext,
+        llm_request
     ):
         state = callback_context.state
         if 'session_active' not in state or not state['session_active']:
@@ -166,7 +214,10 @@ Current agent: {current_agent['active_agent']}
         return remote_agent_info
 
     async def send_message(
-        self, agent_name: str, message: str, tool_context: ToolContext
+        self,
+        agent_name: str,
+        message: str,
+        tool_context: ToolContext
     ):
         """Sends a task either streaming (if supported) or non-streaming.
 
