@@ -44,8 +44,9 @@ class LazyClientFactory(ClientFactory):
     def create(self, card, consumers=None, interceptors=None):
         if not self._config.httpx_client:
             # ここで初めてクライアントを作成
+            # タイムアウトを300秒に延長して、コールドスタートや長い処理に対応
             self._config.httpx_client = httpx.AsyncClient(
-                timeout=60,
+                timeout=300,
                 headers={'Content-Type': 'application/json'},
                 auth=GoogleAuthRefresh(scopes=['https://www.googleapis.com/auth/cloud-platform'])
             )
