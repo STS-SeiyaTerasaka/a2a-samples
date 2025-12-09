@@ -48,10 +48,10 @@ async def main():
     requirements_list = [
         'google-adk==1.14.1',
         'google-genai==1.36.0',
-        'google-cloud-aiplatform==1.113.0',
-        'a2a-sdk==0.3.5',
-        'pydantic==2.12.4',
-        'cloudpickle==3.1.2',
+        'google-cloud-aiplatform==1.123.0', # 修正
+        'a2a-sdk==0.3.10', # 修正
+        'pydantic==2.11.10', # 修正
+        'cloudpickle==3.1.1', # 修正
     ]
 
     # ==================================================================
