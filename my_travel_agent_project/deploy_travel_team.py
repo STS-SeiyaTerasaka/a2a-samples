@@ -46,12 +46,12 @@ async def main():
 
     # Requirements
     requirements_list = [
-        'google-adk==1.14.1',
-        'google-genai==1.36.0',
-        'google-cloud-aiplatform==1.123.0', # 修正
-        'a2a-sdk==0.3.10', # 修正
-        'pydantic==2.11.10', # 修正
-        'cloudpickle==3.1.1', # 修正
+        'google-adk>=1.14.1',
+        'google-genai>=1.36.0',
+        'google-cloud-aiplatform==1.123.0',
+        'a2a-sdk==0.3.10',
+        'pydantic==2.11.10',
+        'cloudpickle==3.1.1',
     ]
 
     # ==================================================================
@@ -62,47 +62,48 @@ async def main():
     
     secretary_agent_card_obj = await get_agent_card(secretary_agent)
     secretary_resource_name = get_agent_resource(secretary_display_name)
+    print(f"  Skipping deployment for existing agent: {secretary_resource_name}")
     
-    if not secretary_resource_name:
-        print(f"  Creating new agent engine for {secretary_display_name} with extra_packages...")
-        secretary_a2a_agent_instance = A2aAgent(
-            agent_card=secretary_agent_card_obj,
-            agent_executor_builder=get_agent_executor_class(secretary_agent, None)
-        )
+    # if not secretary_resource_name:
+    #     print(f"  Creating new agent engine for {secretary_display_name} with extra_packages...")
+    #     secretary_a2a_agent_instance = A2aAgent(
+    #         agent_card=secretary_agent_card_obj,
+    #         agent_executor_builder=get_agent_executor_class(secretary_agent, None)
+    #     )
 
-        created_secretary_engine = ReasoningEngine.create(
-            secretary_a2a_agent_instance,
-            display_name=secretary_display_name,
-            requirements=requirements_list,
-            extra_packages=["./travel_team", "./utils"],
-        )
+    #     created_secretary_engine = ReasoningEngine.create(
+    #         secretary_a2a_agent_instance,
+    #         display_name=secretary_display_name,
+    #         requirements=requirements_list,
+    #         extra_packages=["./travel_team", "./utils"],
+    #     )
         
-        print(f"  Created. Resource Name: {created_secretary_engine.resource_name}")
-        secretary_resource_name = created_secretary_engine.resource_name
-    else:
-        print(f"  Agent already exists: {secretary_resource_name}")
+    #     print(f"  Created. Resource Name: {created_secretary_engine.resource_name}")
+    #     secretary_resource_name = created_secretary_engine.resource_name
+    # else:
+    #     print(f"  Agent already exists: {secretary_resource_name}")
 
-    # Update
-    print(f"  Updating {secretary_display_name}...")
-    secretary_a2a_agent_for_update = A2aAgent(
-        agent_card=secretary_agent_card_obj, 
-        agent_executor_builder=get_agent_executor_class(secretary_agent, secretary_resource_name) 
-    )
-    client.agent_engines.update(
-        name=secretary_resource_name,
-        agent=secretary_a2a_agent_for_update,
-        config={
-            'display_name': secretary_display_name,
-            'description': secretary_agent_card_obj.description,
-            'requirements': requirements_list,
-            'http_options': {
-                'base_url': f'https://{LOCATION}-aiplatform.googleapis.com',
-                'api_version': 'v1beta1',
-            },
-            'staging_bucket': STAGING_BUCKET,
-        },
-    )
-    print(f"  Update complete for {secretary_display_name}.")
+    # # Update
+    # print(f"  Updating {secretary_display_name}...")
+    # secretary_a2a_agent_for_update = A2aAgent(
+    #     agent_card=secretary_agent_card_obj, 
+    #     agent_executor_builder=get_agent_executor_class(secretary_agent, secretary_resource_name) 
+    # )
+    # client.agent_engines.update(
+    #     name=secretary_resource_name,
+    #     agent=secretary_a2a_agent_for_update,
+    #     config={
+    #         'display_name': secretary_display_name,
+    #         'description': secretary_agent_card_obj.description,
+    #         'requirements': requirements_list,
+    #         'http_options': {
+    #             'base_url': f'https://{LOCATION}-aiplatform.googleapis.com',
+    #             'api_version': 'v1beta1',
+    #         },
+    #         'staging_bucket': STAGING_BUCKET,
+    #     },
+    # )
+    # print(f"  Update complete for {secretary_display_name}.")
 
     # ==================================================================
     # STEP 2: Deploy Planner Agent (Orchestrator)
